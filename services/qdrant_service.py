@@ -1,10 +1,10 @@
 import asyncio
-import qdrant_client
+from qdrant_client import QdrantClient
 
 
 class QdrantService:
     def __init__(self, host, port, collection_name, api_key=None):
-        self.client = qdrant_client.Client(
+        self.client = QdrantClient(
             host=host, port=port, collection=collection_name, token=api_key
         )
 

@@ -8,7 +8,7 @@ from pathlib import Path
 from platform import system
 
 import discord
-import qdrant_client
+from qdrant_client import QdrantClient
 from pycord.multicog import apply_multicog
 
 from cogs.code_interpreter_service_cog import CodeInterpreterService
@@ -59,7 +59,7 @@ except Exception:
 
 qdrant_service = None
 if QDRANT_API_KEY and QDRANT_HOST and QDRANT_PORT and QDRANT_INDEX_NAME:
-    client = qdrant_client.Client(api_key=QDRANT_API_KEY, host=QDRANT_HOST, port=QDRANT_PORT)
+    client = QdrantClient(api_key=QDRANT_API_KEY, host=QDRANT_HOST, port=QDRANT_PORT)
     if not client.collection_exists(QDRANT_INDEX_NAME):
         print("Creating Qdrant index. Please wait...")
         try:
