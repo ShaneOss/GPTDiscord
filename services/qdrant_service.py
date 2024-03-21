@@ -40,15 +40,9 @@ class QdrantService:
             # Upsert embedding
             await self.upsert_basic([text], [embedding], [conversation_id])
 
-    async def upsert_basic(self, texts, embeddings, conversation_ids, timestamps):
-        points = [
-            {
-                "id": cid, 
-                "vector": emb, 
-                "payload": {"text": txt, "timestamp": timestamp}
-            } 
-            for txt, emb, cid, timestamp in zip(texts, embeddings, conversation_ids, timestamps)
-        ]
+    async def upsert_basic(self, texts, embeddings, conversation_ids):
+        points = [{"id": cid, "vector": emb, "payload": {"text": txt}} 
+                for txt, emb, cid in zip(texts, embeddings, conversation_ids)]
         try:
             await self.client.upsert(collection_name=self.collection_name, points=points)
             print("Upserted successfully.")
