@@ -59,7 +59,8 @@ except Exception:
 
 qdrant_service = None
 if QDRANT_API_KEY and QDRANT_HOST and QDRANT_PORT and QDRANT_INDEX_NAME:
-    client = QdrantClient(api_key=QDRANT_API_KEY, host=QDRANT_HOST, port=QDRANT_PORT)
+    QDRANT_URL = QDRANT_HOST + ':' + QDRANT_PORT
+    client = QdrantClient(api_key=QDRANT_API_KEY, url=QDRANT_URL)
     if not client.collection_exists(QDRANT_INDEX_NAME):
         print("Creating Qdrant index. Please wait...")
         try:

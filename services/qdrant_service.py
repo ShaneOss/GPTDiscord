@@ -4,8 +4,9 @@ from qdrant_client import QdrantClient
 
 class QdrantService:
     def __init__(self, host, port, collection_name, api_key=None):
+        qdrant_url = host + ':' + port
         self.client = QdrantClient(
-            host=host, port=port, collection=collection_name, token=api_key
+            url=qdrant_url, collection=collection_name, token=api_key
         )
 
     async def upsert_basic(self, text, embeddings):
