@@ -8,7 +8,11 @@ from pathlib import Path
 from platform import system
 
 import discord
+
 from qdrant_client import QdrantClient
+from qdrant_client.http.models import Distance, VectorParams, UpdateStatus
+from qdrant_client.http import models as models
+
 from pycord.multicog import apply_multicog
 
 from cogs.code_interpreter_service_cog import CodeInterpreterService
@@ -56,24 +60,33 @@ try:
     QDRANT_INDEX_NAME = "conversation-embeddings"
 except Exception:
     QDRANT_API_KEY = None
+    
+vector_size = 1536
+vector_distance = Distance.COSINE
 
 qdrant_service = None
 if QDRANT_API_KEY and QDRANT_HOST and QDRANT_PORT and QDRANT_INDEX_NAME:
     QDRANT_URL = QDRANT_HOST + ':' + QDRANT_PORT
     client = QdrantClient(api_key=QDRANT_API_KEY, url=QDRANT_URL)
-    if not client.collection_exists(QDRANT_INDEX_NAME):
-        print("Creating Qdrant index. Please wait...")
-        try:
-            client.create_collection(QDRANT_INDEX_NAME, 1536, "dot_product")
-            print("Qdrant index created successfully.")
-        except Exception as e:
-            print(f"Failed to create Qdrant index: {e}")
-    else:
-        print("Qdrant index already exists.")
+    try:
+        collection = client.get_collection(collection_name=QDRANT_INDEX_NAME)
+    except Exception as e:
+        if "404" in str(e):
+            print("Creating Qdrant index. Please wait...")
+            try:
+                # Create the collection if it doesn't exist
+                client.create_collection(
+                    collection_name=QDRANT_INDEX_NAME,
+                    vectors_config=VectorParams(size=vector_size, distance=vector_distance)
+                )
+            except Exception as create_error:
+                print(f"Failed to create collection: {str(create_error.content)}")
+        else:
+            print(f"Unexpected error: {str(e)}")
 
     qdrant_service = QdrantService(client, QDRANT_INDEX_NAME)
     print("Got the Qdrant service")
-
+    
 #
 # Message queueing for the debug service, defer debug messages to be sent later so we don't hit rate limits.
 #
