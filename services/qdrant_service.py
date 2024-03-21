@@ -38,7 +38,7 @@ class QdrantService:
                 )
                 if not first_embedding:
                     first_embedding = embedding
-                await self.client.upsert_basic(
+                await self.upsert_basic(
                     texts=[chunk],
                     embeddings=[embedding],
                     conversation_ids=[conversation_id],
@@ -48,7 +48,7 @@ class QdrantService:
         embedding = await model.send_embedding_request(
             text, custom_api_key=custom_api_key
         )
-        await self.client.upsert_basic(
+        await self.upsert_basic(
             texts=[text],
             embeddings=[embedding],
             conversation_ids=[conversation_id],
