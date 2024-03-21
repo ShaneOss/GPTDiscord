@@ -7,13 +7,6 @@ class QdrantService:
         self.collection_name = collection_name
         self.client = client
 
-    async def upsert_basic(self, texts, embeddings, conversation_ids):
-            points = [
-                {"id": conversation_ids[i], "vector": embeddings[i], "payload": texts[i]}
-                for i in range(len(texts))
-            ]
-            await self.client.upsert(collection_name=self.collection_name, points=points)
-
     async def get_all_for_conversation(self, conversation_id: int):
         response = await self.client.search(
             collection_name=self.collection_name,
@@ -26,34 +19,28 @@ class QdrantService:
     async def upsert_conversation_embedding(
         self, model, conversation_id: int, text, timestamp, custom_api_key=None
     ):
-        # If the text is > 512 characters, we need to split it up into multiple entries.
-        first_embedding = None
         if len(text) > 500:
-            # Split the text into 512 character chunks
+            # Split the text into chunks
             chunks = [text[i : i + 500] for i in range(0, len(text), 500)]
+            embeddings = []
             for chunk in chunks:
-                # Create an embedding for the split chunk
-                embedding = await model.send_embedding_request(
-                    chunk, custom_api_key=custom_api_key
-                )
-                if not first_embedding:
-                    first_embedding = embedding
-                await self.upsert_basic(
-                    texts=[chunk],
-                    embeddings=[embedding],
-                    conversation_ids=[conversation_id],
-                )
-            return first_embedding
-        
-        embedding = await model.send_embedding_request(
-            text, custom_api_key=custom_api_key
-        )
-        await self.upsert_basic(
-            texts=[text],
-            embeddings=[embedding],
-            conversation_ids=[conversation_id],
-        )
-        return embedding
+                embedding = await model.send_embedding_request(chunk, custom_api_key=custom_api_key)
+                embeddings.append(embedding)
+            # Upsert embeddings
+            await self.upsert_basic(chunks, embeddings, [conversation_id]*len(chunks))
+        else:
+            embedding = await model.send_embedding_request(text, custom_api_key=custom_api_key)
+            # Upsert embedding
+            await self.upsert_basic([text], [embedding], [conversation_id])
+
+    async def upsert_basic(self, texts, embeddings, conversation_ids):
+        # Upsert texts, embeddings, and conversation_ids into Qdrant
+        points = [{"id": cid, "vector": emb, "payload": txt} for txt, emb, cid in zip(texts, embeddings, conversation_ids)]
+        try:
+            await self.client.upsert(collection_name=self.collection_name, points=points)
+            print("Upserted successfully.")
+        except Exception as e:
+            print(f"Failed to upsert: {e}")
 
     async def get_n_similar(self, conversation_id: int, embedding, n=10):
         response = await self.client.search(
