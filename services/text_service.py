@@ -182,7 +182,7 @@ class TextService:
                     )  # Use the version of the prompt without the author's name for better clarity on retrieval.
 
                     # Now, build the new prompt by getting the X most similar with qdrant
-                    similar_prompts = converser_cog.qdrant_service.get_n_similar(
+                    similar_prompts = await converser_cog.qdrant_service.get_n_similar(
                         conversation_id,
                         embedding_prompt_less_author,
                         n=converser_cog.model.num_conversation_lookback,
