@@ -18,5 +18,5 @@ Once the user enters their key, the bot will send a small test request to OpenAI
   
 After the user's key is validated, they will be able to use GPT and DALLE commands.  
   
-The Moderations service still uses the main API key defined in the `.env` file. Pinecone and discord-tokens are also per-host tokens, not per-user.  
+The Moderations service still uses the main API key defined in the `.env` file. Qdrant and discord-tokens are also per-host tokens, not per-user.  
   

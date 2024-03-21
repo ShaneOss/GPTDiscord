@@ -25,7 +25,9 @@ The bot uses an environment file named `.env` to configure it. This file must be
 ```shell  
 OPENAI_TOKEN = "<openai_api_token>"  
 DISCORD_TOKEN = "<discord_bot_token>"  
-#PINECONE_TOKEN = "<pinecone_token>" # pinecone token if you have it enabled. See readme  
+QDRANT_API_KEY = "<qdrant_api_key>"  # Qdrant API key
+QDRANT_HOST = "<qdrant_host>"  # Qdrant host
+QDRANT_PORT = "<qdrant_port>"  # Qdrant port 
 DEBUG_GUILD = "974519864045756446"  # discord_server_id  
 DEBUG_CHANNEL = "977697652147892304"  # discord_chanel_id  
 ALLOWED_GUILDS = "971268468148166697,971268468148166697"  
