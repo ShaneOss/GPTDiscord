@@ -84,7 +84,7 @@ if QDRANT_API_KEY and QDRANT_HOST and QDRANT_PORT and QDRANT_INDEX_NAME:
         else:
             print(f"Unexpected error: {str(e)}")
 
-    qdrant_service = QdrantService(client, QDRANT_INDEX_NAME)
+    qdrant_service = QdrantService(client, collection_name=QDRANT_INDEX_NAME)
     print("Got the Qdrant service")
     
 #
