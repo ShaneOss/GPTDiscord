@@ -3,17 +3,16 @@ from qdrant_client import QdrantClient
 
 
 class QdrantService:
-    def __init__(self, host, port, collection_name, api_key=None):
-        qdrant_url = host + ':' + port
-        self.client = QdrantClient(
-            url=qdrant_url, collection=collection_name, token=api_key
-        )
+    def __init__(self, client, collection_name):
+        self.collection_name = collection_name
+        self.client = client
 
     async def upsert_basic(self, text, embeddings):
-        await self.client.insert(items=[(text, embeddings)])
+        await self.client.upsert(collection_name=self.collection_name, items=[(text, embeddings)])
 
     async def get_all_for_conversation(self, conversation_id: int):
         response = await self.client.search(
+            collection_name=self.collection_name,
             query_vector=None,
             filters={"conversation_id": conversation_id},
             top_k=100,
@@ -62,6 +61,7 @@ class QdrantService:
 
     async def get_n_similar(self, conversation_id: int, embedding, n=10):
         response = await self.client.search(
+            collection_name=self.collection_name,
             query_vector=embedding,
             filters={"conversation_id": conversation_id},
             top_k=n,
@@ -77,6 +77,7 @@ class QdrantService:
 
     async def get_all_conversation_items(self, conversation_id: int):
         response = await self.client.search(
+            collection_name=self.collection_name,
             query_vector=[0] * 1536,
             filters={"conversation_id": conversation_id},
             top_k=1000,
