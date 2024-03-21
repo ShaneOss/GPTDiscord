@@ -7,8 +7,12 @@ class QdrantService:
         self.collection_name = collection_name
         self.client = client
 
-    async def upsert_basic(self, text, embeddings):
-        await self.client.upsert(collection_name=self.collection_name, items=[(text, embeddings)])
+    async def upsert_basic(self, texts, embeddings, conversation_ids):
+            points = [
+                {"id": conversation_ids[i], "vector": embeddings[i], "payload": texts[i]}
+                for i in range(len(texts))
+            ]
+            await self.client.upsert(collection_name=self.collection_name, points=points)
 
     async def get_all_for_conversation(self, conversation_id: int):
         response = await self.client.search(
@@ -34,30 +38,20 @@ class QdrantService:
                 )
                 if not first_embedding:
                     first_embedding = embedding
-                await self.client.upsert(
-                    collection_name=self.collection_name,
-                    items=[(chunk, embedding)],
-                    metadata={
-                        "conversation_id": conversation_id,
-                        "timestamp": timestamp,
-                    },
+                await self.client.upsert_basic(
+                    texts=[chunk],
+                    embeddings=[embedding],
+                    conversation_ids=[conversation_id],
                 )
             return first_embedding
+        
         embedding = await model.send_embedding_request(
             text, custom_api_key=custom_api_key
         )
-        await self.client.upsert(
-            collection_name=self.collection_name,
-            items=[
-                (
-                    text,
-                    embedding,
-                )
-            ],
-            metadata={
-                "conversation_id": conversation_id,
-                "timestamp": timestamp,
-            },
+        await self.client.upsert_basic(
+            texts=[text],
+            embeddings=[embedding],
+            conversation_ids=[conversation_id],
         )
         return embedding
 
