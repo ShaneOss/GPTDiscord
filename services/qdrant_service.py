@@ -34,7 +34,8 @@ class QdrantService:
                 )
                 if not first_embedding:
                     first_embedding = embedding
-                await self.client.insert(
+                await self.client.upsert(
+                    collection_name=self.collection_name,
                     items=[(chunk, embedding)],
                     metadata={
                         "conversation_id": conversation_id,
@@ -45,7 +46,8 @@ class QdrantService:
         embedding = await model.send_embedding_request(
             text, custom_api_key=custom_api_key
         )
-        await self.client.insert(
+        await self.client.upsert(
+            collection_name=self.collection_name,
             items=[
                 (
                     text,
