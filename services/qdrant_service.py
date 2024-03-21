@@ -1,19 +1,26 @@
 import asyncio
 from qdrant_client import QdrantClient
 
-
 class QdrantService:
     def __init__(self, client, collection_name):
         self.collection_name = collection_name
         self.client = client
 
     async def get_all_for_conversation(self, conversation_id: int):
+        # Updated to use the correct structure for filters and query within search_params
+        search_params = {
+            "filter": {
+                "must": [
+                    {"key": "conversation_id", "match": {"integer": conversation_id}}
+                ]
+            },
+            "top": 100,
+        }        
         response = await self.client.search(
             collection_name=self.collection_name,
-            query_vector=None,
-            filters={"conversation_id": conversation_id},
-            top_k=100,
+            search_params=search_params,
         )
+        
         return response
 
     async def upsert_conversation_embedding(
@@ -33,9 +40,15 @@ class QdrantService:
             # Upsert embedding
             await self.upsert_basic([text], [embedding], [conversation_id])
 
-    async def upsert_basic(self, texts, embeddings, conversation_ids):
-        # Upsert texts, embeddings, and conversation_ids into Qdrant
-        points = [{"id": cid, "vector": emb, "payload": txt} for txt, emb, cid in zip(texts, embeddings, conversation_ids)]
+    async def upsert_basic(self, texts, embeddings, conversation_ids, timestamps):
+        points = [
+            {
+                "id": cid, 
+                "vector": emb, 
+                "payload": {"text": txt, "timestamp": timestamp}
+            } 
+            for txt, emb, cid, timestamp in zip(texts, embeddings, conversation_ids, timestamps)
+        ]
         try:
             await self.client.upsert(collection_name=self.collection_name, points=points)
             print("Upserted successfully.")
@@ -43,30 +56,50 @@ class QdrantService:
             print(f"Failed to upsert: {e}")
 
     async def get_n_similar(self, conversation_id: int, embedding, n=10):
+        # Assuming 'filters' needs to be structured correctly within the 'search_params' argument now.
+        search_params = {
+            "filter": {
+                "must": [
+                    {"key": "conversation_id", "match": {"integer": conversation_id}}
+                ]
+            },
+            "top": n,
+            "vector": embedding,
+        }
         response = await self.client.search(
             collection_name=self.collection_name,
-            query_vector=embedding,
-            filters={"conversation_id": conversation_id},
-            top_k=n,
-            include_payload=True,
+            search_params=search_params,  # Use the structured 'search_params'
         )
         relevant_phrases = [
             (match["payload"]["id"], match["payload"]["timestamp"])
-            for match in response["items"]
+            for match in response["result"]["hits"]
         ]
         # Sort the relevant phrases based on the timestamp
         relevant_phrases.sort(key=lambda x: x[1])
         return relevant_phrases
 
     async def get_all_conversation_items(self, conversation_id: int):
+        search_params = {
+            "filter": {
+                "must": [
+                    {"key": "conversation_id", "match": {"integer": conversation_id}}
+                ]
+            },
+            "top": 1000,
+            "vector": [0] * 1536,
+        }
         response = await self.client.search(
             collection_name=self.collection_name,
-            query_vector=[0] * 1536,
-            filters={"conversation_id": conversation_id},
-            top_k=1000,
+            search_params=search_params,
         )
-        phrases = [match["payload"]["id"] for match in response["items"]]
+        
+        phrases = []
+        if response["result"]["hits"]:
+            for match in response["result"]["hits"]:
+                id = match["payload"]["text"]
+                timestamp = match["payload"]["timestamp"]
+                phrases.append((id, timestamp))
 
         # Sort on timestamp
         phrases.sort(key=lambda x: x[1])
-        return phrases
+        return [phrase[0] for phrase in phrases]
