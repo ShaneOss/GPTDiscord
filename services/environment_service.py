@@ -527,14 +527,6 @@ class EnvService:
             return None
 
     @staticmethod
-    def get_pinecone_region():
-        try:
-            pinecone_region = os.getenv("PINECONE_REGION")
-            return pinecone_region
-        except Exception:
-            return "us-west1-gcp"
-
-    @staticmethod
     def get_max_search_price():
         try:
             search_price = float(os.getenv("MAX_SEARCH_PRICE"))

@@ -8,7 +8,7 @@ from pathlib import Path
 from platform import system
 
 import discord
-import pinecone
+import qdrant_client
 from pycord.multicog import apply_multicog
 
 from cogs.code_interpreter_service_cog import CodeInterpreterService
@@ -25,7 +25,7 @@ from models.deepl_model import TranslationModel
 from services.health_service import HealthService
 from services.pickle_service import Pickler
 
-from services.pinecone_service import PineconeService
+from services.qdrant_service import QdrantService
 from services.deletion_service import Deletion
 from services.message_queue_service import Message
 from services.usage_service import UsageService
@@ -46,29 +46,32 @@ else:
     separator = "/"
 
 #
-# The pinecone service is used to store and retrieve conversation embeddings.
+# The qdrant service is used to store and retrieve conversation embeddings.
 #
 
 try:
-    PINECONE_TOKEN = os.getenv("PINECONE_TOKEN")
+    QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
+    QDRANT_HOST = os.getenv("QDRANT_HOST")
+    QDRANT_PORT = os.getenv("QDRANT_PORT")
+    QDRANT_INDEX_NAME = "conversation-embeddings"
 except Exception:
-    PINECONE_TOKEN = None
+    QDRANT_API_KEY = None
 
-pinecone_service = None
-if PINECONE_TOKEN:
-    pinecone.init(api_key=PINECONE_TOKEN, environment=EnvService.get_pinecone_region())
-    PINECONE_INDEX = "conversation-embeddings"
-    if PINECONE_INDEX not in pinecone.list_indexes():
-        print("Creating pinecone index. Please wait...")
-        pinecone.create_index(
-            PINECONE_INDEX,
-            dimension=1536,
-            metric="dotproduct",
-            pod_type="s1",
-        )
+qdrant_service = None
+if QDRANT_API_KEY and QDRANT_HOST and QDRANT_PORT and QDRANT_INDEX_NAME:
+    client = qdrant_client.Client(api_key=QDRANT_API_KEY, host=QDRANT_HOST, port=QDRANT_PORT)
+    if not client.collection_exists(QDRANT_INDEX_NAME):
+        print("Creating Qdrant index. Please wait...")
+        try:
+            client.create_collection(QDRANT_INDEX_NAME, 1536, "dot_product")
+            print("Qdrant index created successfully.")
+        except Exception as e:
+            print(f"Failed to create Qdrant index: {e}")
+    else:
+        print("Qdrant index already exists.")
 
-    pinecone_service = PineconeService(pinecone.Index(PINECONE_INDEX))
-    print("Got the pinecone service")
+    qdrant_service = QdrantService(client, QDRANT_INDEX_NAME)
+    print("Got the Qdrant service")
 
 #
 # Message queueing for the debug service, defer debug messages to be sent later so we don't hit rate limits.
@@ -143,7 +146,7 @@ async def main():
             debug_guild,
             debug_channel,
             data_path,
-            pinecone_service=pinecone_service,
+            qdrant_service=qdrant_service,
             pickle_queue=pickle_queue,
         )
     )
