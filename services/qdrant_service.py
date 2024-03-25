@@ -56,61 +56,61 @@ class QdrantService:
             print(f"Failed to upsert: {e}")
 
     async def get_n_similar(self, conversation_id: int, embedding, n=10):
-        # Constructing the search request according to the Qdrant documentation
-        search_request = {
-            "filter": {
-                "must": [
-                    # Assuming you're filtering based on 'conversation_id' stored in the payload as an integer
-                    {"key": "conversation_id", "condition": {"$eq": conversation_id}}  
-                ]
-            },
-            "vector": embedding,   # The query vector for finding similar items
-            "top": n,   # The number of similar items you want to retrieve
-            "params": {  # Optional: Parameters to fine-tune the search
-                "hnsw_ef": 128  # Example: Adjust the search parameter, if necessary
-            },
-            "with_payload": True,  # Whether to include the items' payloads in the response
+        # Assuming that the QdrantClient expects query_vector, top, and filter as separate arguments
+        filter = {
+            "must": [
+                {"key": "conversation_id", "condition": {"$eq": conversation_id}}
+            ]
         }
-
-        # Assuming 'search' method of your Qdrant client is synchronous and it directly accepts the 'search_request' dict
-        # Adapting to run the synchronous 'search' method in an executor to not block the async loop
+        
+        # Conduct the search operation
         loop = asyncio.get_running_loop()
         response = await loop.run_in_executor(None, lambda: self.client.search(
             collection_name=self.collection_name,
-            query=search_request  # the actual search request
+            query_vector=embedding,  # This is where the query_vector is directly provided
+            filter=filter,
+            top=n,
+            params={"hnsw_ef": 128},  # Assuming additional search parameters are part of a separate `params` argument
+            with_payload=True
         ))
 
-        # Process the response to extract relevant items
+        # Process the response
         relevant_phrases = [
-            # Here, adjust the way you access the response and payload based on the actual structure Qdrant sends back
-            (match["payload"]["text"], match["score"])  # Adjust key access based on actual payload schema
+            (match["payload"]["text"], match["score"])
             for match in response.get("result", {}).get("hits", [])
         ]
 
         return relevant_phrases
 
     async def get_all_conversation_items(self, conversation_id: int):
-        search_params = {
-            "filter": {
-                "must": [
-                    {"key": "conversation_id", "match": {"integer": conversation_id}}
-                ]
-            },
-            "top": 1000,
-            "vector": [0] * 1536,
+        # Defining a dummy or neutral vector is unusual for text retrieval unless you have enabled and intend
+        # to use a default embedding for all texts. Usually, you would use filtering alone for such retrieval tasks.
+        # The 'vector' key and its value ([0] * 1536) might not be needed if you're filtering without vector similarity.
+        # Filter structure needs to match Qdrant's expectations.
+        filter_condition = {
+            "must": [
+                {"key": "conversation_id", "condition": {"$eq": conversation_id}}
+            ]
         }
-        response = await self.client.search(
-            collection_name=self.collection_name,
-            search_params=search_params,
-        )
         
-        phrases = []
-        if response["result"]["hits"]:
-            for match in response["result"]["hits"]:
-                id = match["payload"]["text"]
-                timestamp = match["payload"]["timestamp"]
-                phrases.append((id, timestamp))
+        loop = asyncio.get_running_loop()
+        response = await loop.run_in_executor(None, lambda: self.client.search(
+            collection_name=self.collection_name,
+            query_vector=[0] * 1536,  # or remove if your search does not require a dummy vector
+            filter=filter_condition,
+            top=1000,
+            with_payload=True  # Ensuring payload is included in the response if you rely on it
+        ))
 
-        # Sort on timestamp
+        # Extracting phrases from the response
+        phrases = []
+        if response.get("result", {}).get("hits", []):
+            for match in response["result"]["hits"]:
+                text = match["payload"].get("text")  # Safely access 'text' in case it's missing
+                timestamp = match["payload"].get("timestamp", 0)  # Providing a default if 'timestamp' is missing
+                if text:  # Ensuring 'text' is not None or empty before appending
+                    phrases.append((text, timestamp))
+
+        # Sort on timestamp (consider if your payload does include 'timestamp' and it's relevant for sorting)
         phrases.sort(key=lambda x: x[1])
         return [phrase[0] for phrase in phrases]
