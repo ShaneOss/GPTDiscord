@@ -50,7 +50,7 @@ class QdrantService:
             print(f"Failed to upsert: {e}")
 
     async def get_n_similar(self, conversation_id: int, embedding, n=10):
-        # Assuming 'filters' needs to be structured correctly within the 'search_params' argument now.
+        # Prepare search parameters correctly
         search_params = {
             "filter": {
                 "must": [
@@ -58,16 +58,23 @@ class QdrantService:
                 ]
             },
             "top": n,
-            "vector": embedding,
         }
-        response = await self.client.search(
+        # Since the 'search' operation is synchronous, use 'run_in_executor' to prevent blocking
+        loop = asyncio.get_running_loop()
+
+        # Note: Adjust the lambda function as necessary based on your Qdrant client search method's signature
+        response = await loop.run_in_executor(None, lambda: self.client.search(
             collection_name=self.collection_name,
-            search_params=search_params,  # Use the structured 'search_params'
-        )
+            query_vector=embedding,
+            search_params=search_params,
+        ))
+
+        # Assuming the response structure is as follows; adjust as necessary based on your Qdrant version
         relevant_phrases = [
-            (match["payload"]["id"], match["payload"]["timestamp"])
-            for match in response["result"]["hits"]
+            (match["payload"]["id"], match.get("payload", {}).get("timestamp", 0))
+            for match in response.get("result", {}).get("hits", [])
         ]
+
         # Sort the relevant phrases based on the timestamp
         relevant_phrases.sort(key=lambda x: x[1])
         return relevant_phrases
