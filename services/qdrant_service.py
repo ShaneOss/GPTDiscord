@@ -56,33 +56,37 @@ class QdrantService:
             print(f"Failed to upsert: {e}")
 
     async def get_n_similar(self, conversation_id: int, embedding, n=10):
-        # Prepare search parameters correctly
-        search_params = {
+        # Constructing the search request according to the Qdrant documentation
+        search_request = {
             "filter": {
                 "must": [
-                    {"key": "conversation_id", "match": {"integer": conversation_id}}
+                    # Assuming you're filtering based on 'conversation_id' stored in the payload as an integer
+                    {"key": "conversation_id", "condition": {"$eq": conversation_id}}  
                 ]
             },
-            "top": n,
+            "vector": embedding,   # The query vector for finding similar items
+            "top": n,   # The number of similar items you want to retrieve
+            "params": {  # Optional: Parameters to fine-tune the search
+                "hnsw_ef": 128  # Example: Adjust the search parameter, if necessary
+            },
+            "with_payload": True,  # Whether to include the items' payloads in the response
         }
-        # Since the 'search' operation is synchronous, use 'run_in_executor' to prevent blocking
-        loop = asyncio.get_running_loop()
 
-        # Note: Adjust the lambda function as necessary based on your Qdrant client search method's signature
+        # Assuming 'search' method of your Qdrant client is synchronous and it directly accepts the 'search_request' dict
+        # Adapting to run the synchronous 'search' method in an executor to not block the async loop
+        loop = asyncio.get_running_loop()
         response = await loop.run_in_executor(None, lambda: self.client.search(
             collection_name=self.collection_name,
-            query_vector=embedding,
-            search_params=search_params,
+            query=search_request  # the actual search request
         ))
 
-        # Assuming the response structure is as follows; adjust as necessary based on your Qdrant version
+        # Process the response to extract relevant items
         relevant_phrases = [
-            (match["payload"]["id"], match.get("payload", {}).get("timestamp", 0))
+            # Here, adjust the way you access the response and payload based on the actual structure Qdrant sends back
+            (match["payload"]["text"], match["score"])  # Adjust key access based on actual payload schema
             for match in response.get("result", {}).get("hits", [])
         ]
 
-        # Sort the relevant phrases based on the timestamp
-        relevant_phrases.sort(key=lambda x: x[1])
         return relevant_phrases
 
     async def get_all_conversation_items(self, conversation_id: int):
