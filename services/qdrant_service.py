@@ -41,10 +41,16 @@ class QdrantService:
             await self.upsert_basic([text], [embedding], [conversation_id])
 
     async def upsert_basic(self, texts, embeddings, conversation_ids):
-        points = [{"id": cid, "vector": emb, "payload": {"text": txt}} 
-                for txt, emb, cid in zip(texts, embeddings, conversation_ids)]
+        points = [{"id": cid, "vector": emb, "payload": {"text": txt}}
+                  for txt, emb, cid in zip(texts, embeddings, conversation_ids)]
+        
+        # Use an executor to run the synchronous upsert function
+        loop = asyncio.get_running_loop()
         try:
-            await self.client.upsert(collection_name=self.collection_name, points=points)
+            await loop.run_in_executor(None, lambda: self.client.upsert(
+                collection_name=self.collection_name,
+                points=points
+            ))
             print("Upserted successfully.")
         except Exception as e:
             print(f"Failed to upsert: {e}")
