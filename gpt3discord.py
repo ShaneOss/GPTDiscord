@@ -57,7 +57,7 @@ try:
     QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
     QDRANT_HOST = os.getenv("QDRANT_HOST")
     QDRANT_PORT = os.getenv("QDRANT_PORT")
-    QDRANT_INDEX_NAME = "conversation-embeddings"
+    QDRANT_INDEX_NAME = "gptdiscord_conversation-embeddings"
 except Exception:
     QDRANT_API_KEY = None
     
