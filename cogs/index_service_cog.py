@@ -16,13 +16,54 @@ from services.text_service import TextService
 from models.index_model import Index_handler
 from utils.safe_ctx_respond import safe_remove_list
 
+from llama_index.core.indices.vector_store.base import VectorStoreIndex
+from llama_index.vector_stores.qdrant import QdrantVectorStore
+from qdrant_client import QdrantClient
+
 USER_INPUT_API_KEYS = EnvService.get_user_input_api_keys()
 USER_KEY_DB = EnvService.get_api_db()
 PRE_MODERATE = EnvService.get_premoderate()
 GITHUB_TOKEN = EnvService.get_github_token()
 if GITHUB_TOKEN:
     os.environ["GITHUB_TOKEN"] = GITHUB_TOKEN
+    
+    
+try:
+    QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
+    QDRANT_HOST = os.getenv("QDRANT_HOST")
+    QDRANT_PORT = os.getenv("QDRANT_PORT")
+    QDRANT_INDEX_NAME = "gptdiscord_documents"
+except Exception:
+    QDRANT_API_KEY = None
+    
+vector_size = 1536
+vector_distance = Distance.COSINE
 
+qdrant_service = None
+if QDRANT_API_KEY and QDRANT_HOST and QDRANT_PORT and QDRANT_INDEX_NAME:
+    QDRANT_URL = QDRANT_HOST + ':' + QDRANT_PORT
+    client = QdrantClient(api_key=QDRANT_API_KEY, url=QDRANT_URL)
+    try:
+        collection = client.get_collection(collection_name=QDRANT_INDEX_NAME)
+    except Exception as e:
+        if "404" in str(e):
+            print("Creating Qdrant index. Please wait...")
+            try:
+                # Create the collection if it doesn't exist
+                client.create_collection(
+                    collection_name=QDRANT_INDEX_NAME,
+                    vectors_config=VectorParams(size=vector_size, distance=vector_distance)
+                )
+            except Exception as create_error:
+                print(f"Failed to create collection: {str(create_error.content)}")
+        else:
+            print(f"Unexpected error: {str(e)}")
+
+    qdrant_service = QdrantService(client, collection_name=QDRANT_INDEX_NAME)
+    print("Got the Qdrant service")
+
+    vector_store = QdrantVectorStore(client=client, collection_name="gptdiscord_documents")
+    index = VectorStoreIndex.from_vector_store(vector_store=vector_store)
 
 class IndexService(discord.Cog, name="IndexService"):
     """Cog containing gpt-index commands"""
