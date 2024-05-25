@@ -19,6 +19,8 @@ from utils.safe_ctx_respond import safe_remove_list
 from llama_index.core.indices.vector_store.base import VectorStoreIndex
 from llama_index.vector_stores.qdrant import QdrantVectorStore
 from qdrant_client import QdrantClient
+from qdrant_client.http.models import Distance, VectorParams, UpdateStatus
+from qdrant_client.http import models as models
 
 USER_INPUT_API_KEYS = EnvService.get_user_input_api_keys()
 USER_KEY_DB = EnvService.get_api_db()
