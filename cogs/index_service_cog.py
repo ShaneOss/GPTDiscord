@@ -61,9 +61,6 @@ if QDRANT_API_KEY and QDRANT_HOST and QDRANT_PORT and QDRANT_INDEX_NAME:
         else:
             print(f"Unexpected error: {str(e)}")
 
-    qdrant_service = QdrantService(client, collection_name=QDRANT_INDEX_NAME)
-    print("Got the Qdrant service")
-
     vector_store = QdrantVectorStore(client=client, collection_name="gptdiscord_documents")
     index = VectorStoreIndex.from_vector_store(vector_store=vector_store)
 
